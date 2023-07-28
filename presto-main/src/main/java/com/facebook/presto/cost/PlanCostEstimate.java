@@ -26,14 +26,16 @@ import static java.lang.Double.isNaN;
 
 public final class PlanCostEstimate
 {
-    private static final PlanCostEstimate INFINITE = new PlanCostEstimate(POSITIVE_INFINITY, POSITIVE_INFINITY, POSITIVE_INFINITY, POSITIVE_INFINITY);
-    private static final PlanCostEstimate UNKNOWN = new PlanCostEstimate(NaN, NaN, NaN, NaN);
-    private static final PlanCostEstimate ZERO = new PlanCostEstimate(0, 0, 0, 0);
+    private static final PlanCostEstimate INFINITE = new PlanCostEstimate(POSITIVE_INFINITY, POSITIVE_INFINITY, POSITIVE_INFINITY, POSITIVE_INFINITY, POSITIVE_INFINITY);
+    private static final PlanCostEstimate UNKNOWN = new PlanCostEstimate(NaN, NaN, NaN, NaN, NaN);
+    private static final PlanCostEstimate ZERO = new PlanCostEstimate(0, 0, 0, 0, 0);
 
     private final double cpuCost;
     private final double maxMemory;
     private final double maxMemoryWhenOutputting;
     private final double networkCost;
+
+    private final double cumulativeRowCount;
 
     public static PlanCostEstimate infinite()
     {
@@ -55,8 +57,10 @@ public final class PlanCostEstimate
             @JsonProperty("cpuCost") double cpuCost,
             @JsonProperty("maxMemory") double maxMemory,
             @JsonProperty("maxMemoryWhenOutputting") double maxMemoryWhenOutputting,
-            @JsonProperty("networkCost") double networkCost)
+            @JsonProperty("networkCost") double networkCost,
+            @JsonProperty("cumulativeRowCount") double cumulativeRowCount)
     {
+        this.cumulativeRowCount = cumulativeRowCount;
         checkArgument(!(cpuCost < 0), "cpuCost cannot be negative: %s", cpuCost);
         checkArgument(!(maxMemory < 0), "maxMemory cannot be negative: %s", maxMemory);
         checkArgument(!(maxMemoryWhenOutputting < 0), "maxMemoryWhenOutputting cannot be negative: %s", maxMemoryWhenOutputting);
@@ -77,6 +81,12 @@ public final class PlanCostEstimate
     public double getCpuCost()
     {
         return cpuCost;
+    }
+
+    @JsonProperty
+    public double getCumulativeRowCount()
+    {
+        return cumulativeRowCount;
     }
 
     /**

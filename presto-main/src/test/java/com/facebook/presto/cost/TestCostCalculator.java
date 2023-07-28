@@ -331,9 +331,9 @@ public class TestCostCalculator
                 "key2");
 
         Map<String, PlanCostEstimate> costs = ImmutableMap.of(
-                "ts1", new PlanCostEstimate(0, 128, 128, 0),
-                "ts2", new PlanCostEstimate(0, 64, 64, 0),
-                "ts3", new PlanCostEstimate(0, 32, 32, 0));
+                "ts1", new PlanCostEstimate(0, 128, 128, 0, 0),
+                "ts2", new PlanCostEstimate(0, 64, 64, 0, 0),
+                "ts3", new PlanCostEstimate(0, 32, 32, 0, 0));
 
         Map<String, PlanNodeStatsEstimate> stats = ImmutableMap.of(
                 "join", statsEstimate(join, 10_000),
@@ -863,6 +863,6 @@ public class TestCostCalculator
 
     private static PlanCostEstimate cpuCost(double cpuCost)
     {
-        return new PlanCostEstimate(cpuCost, 0, 0, 0);
+        return new PlanCostEstimate(cpuCost, 0, 0, 0, 0);
     }
 }

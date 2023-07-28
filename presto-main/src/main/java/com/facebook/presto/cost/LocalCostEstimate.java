@@ -28,18 +28,19 @@ public class LocalCostEstimate
     private final double cpuCost;
     private final double maxMemory;
     private final double networkCost;
+    private double rowCount;
 
     public static LocalCostEstimate unknown()
     {
-        return of(NaN, NaN, NaN);
+        return of(NaN, NaN, NaN, NaN);
     }
 
     public static LocalCostEstimate zero()
     {
-        return of(0, 0, 0);
+        return of(0, 0, 0, 0);
     }
 
-    public static LocalCostEstimate ofCpu(double cpuCost)
+    public static LocalCostEstimate ofCpu(double cpuCost, double rowCount)
     {
         return of(cpuCost, 0, 0);
     }
@@ -54,12 +55,26 @@ public class LocalCostEstimate
         return new LocalCostEstimate(cpuCost, maxMemory, networkCost);
     }
 
+    public  static LocalCostEstimate of(double cpuCost, double maxMemory, double networkCost, double cumulativeRowCount)
+    {
+        return new LocalCostEstimate(cpuCost, maxMemory, networkCost, cumulativeRowCount);
+    }
+
     private LocalCostEstimate(double cpuCost, double maxMemory, double networkCost)
     {
         this.cpuCost = cpuCost;
         this.maxMemory = maxMemory;
         this.networkCost = networkCost;
     }
+
+    public LocalCostEstimate(double cpuCost, double maxMemory, double networkCost, double cumulativeRowCount)
+    {
+        this.cpuCost = cpuCost;
+        this.maxMemory = maxMemory;
+        this.networkCost = networkCost;
+        this.rowCount = cumulativeRowCount;
+    }
+
 
     public double getCpuCost()
     {
@@ -76,13 +91,18 @@ public class LocalCostEstimate
         return networkCost;
     }
 
+    public double getRowCount()
+    {
+        return rowCount;
+    }
+
     /**
      * @deprecated This class represents individual cost of a part of a plan (usually of a single {@link PlanNode}). Use {@link CostProvider} instead.
      */
     @Deprecated
     public PlanCostEstimate toPlanCost()
     {
-        return new PlanCostEstimate(cpuCost, maxMemory, maxMemory, networkCost);
+        return new PlanCostEstimate(cpuCost, maxMemory, maxMemory, networkCost, rowCount);
     }
 
     @Override
