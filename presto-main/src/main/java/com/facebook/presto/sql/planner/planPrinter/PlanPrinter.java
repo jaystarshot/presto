@@ -37,6 +37,9 @@ import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.function.FunctionHandle;
 import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.Assignments;
+import com.facebook.presto.spi.plan.CteConsumerNode;
+import com.facebook.presto.spi.plan.CteProducerNode;
+import com.facebook.presto.spi.plan.CteReferenceNode;
 import com.facebook.presto.spi.plan.DistinctLimitNode;
 import com.facebook.presto.spi.plan.ExceptNode;
 import com.facebook.presto.spi.plan.FilterNode;
@@ -48,6 +51,7 @@ import com.facebook.presto.spi.plan.OutputNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeId;
 import com.facebook.presto.spi.plan.ProjectNode;
+import com.facebook.presto.spi.plan.SequenceNode;
 import com.facebook.presto.spi.plan.TableScanNode;
 import com.facebook.presto.spi.plan.TopNNode;
 import com.facebook.presto.spi.plan.UnionNode;
@@ -827,6 +831,34 @@ public class PlanPrinter
             PlanNodeStats nodeStats = stats.map(s -> s.get(node.getId())).orElse(null);
             printTableScanInfo(nodeOutput, node, nodeStats);
             return null;
+        }
+
+        @Override
+        public Void visitSequence(SequenceNode node, Void context)
+        {
+            addNode(node, "Sequence");
+            return processChildren(node, context);
+        }
+
+        @Override
+        public Void visitCteConsumer(CteConsumerNode node, Void context)
+        {
+            addNode(node, "CteConsumer");
+            return processChildren(node, context);
+        }
+
+        @Override
+        public Void visitCteProducer(CteProducerNode node, Void context)
+        {
+            addNode(node, "CteProducer");
+            return processChildren(node, context);
+        }
+
+        @Override
+        public Void visitCteReference(CteReferenceNode node, Void context)
+        {
+            addNode(node, "CteReference");
+            return processChildren(node, context);
         }
 
         @Override

@@ -25,6 +25,7 @@ import com.facebook.presto.spi.plan.MarkDistinctNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.plan.ProjectNode;
+import com.facebook.presto.spi.plan.SequenceNode;
 import com.facebook.presto.spi.plan.UnionNode;
 import com.facebook.presto.spi.relation.CallExpression;
 import com.facebook.presto.spi.relation.RowExpression;
@@ -160,6 +161,21 @@ public class HashGenerationOptimizer
             // Apply node is not supported by execution, so do not rewrite it
             // that way query will fail in sanity checkers
             return new PlanWithProperties(node, ImmutableMap.of());
+        }
+
+        public PlanWithProperties visitSequence(SequenceNode node, HashComputationSet context)
+        {
+            List<PlanNode> cteProducers = node.getCteProducers().stream()
+                    .map(c ->
+                            planAndEnforce(c, new HashComputationSet(), true, new HashComputationSet()).getNode())
+                    .collect(ImmutableList.toImmutableList());
+            PlanWithProperties primarySource = planAndEnforce(node.getPrimarySource(), new HashComputationSet(), true, new HashComputationSet());
+            return new PlanWithProperties(
+                    replaceChildren(node, ImmutableList.<PlanNode>builder()
+                            .addAll(cteProducers)
+                            .add(primarySource.getNode())
+                            .build()),
+                    primarySource.getHashVariables());
         }
 
         @Override

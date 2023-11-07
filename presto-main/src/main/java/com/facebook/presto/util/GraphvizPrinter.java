@@ -28,6 +28,7 @@ import com.facebook.presto.spi.plan.MarkDistinctNode;
 import com.facebook.presto.spi.plan.OutputNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.ProjectNode;
+import com.facebook.presto.spi.plan.SequenceNode;
 import com.facebook.presto.spi.plan.TableScanNode;
 import com.facebook.presto.spi.plan.TopNNode;
 import com.facebook.presto.spi.plan.UnionNode;
@@ -111,6 +112,8 @@ public final class GraphvizPrinter
         SINK,
         WINDOW,
         UNION,
+
+        SEQUENCE,
         SORT,
         SAMPLE,
         MARK_DISTINCT,
@@ -140,6 +143,7 @@ public final class GraphvizPrinter
             .put(NodeType.SINK, "indianred1")
             .put(NodeType.WINDOW, "darkolivegreen4")
             .put(NodeType.UNION, "turquoise4")
+            .put(NodeType.SEQUENCE, "turquoise4")
             .put(NodeType.MARK_DISTINCT, "violet")
             .put(NodeType.TABLE_WRITER, "cyan")
             .put(NodeType.TABLE_WRITER_MERGE, "cyan4")
@@ -194,6 +198,7 @@ public final class GraphvizPrinter
 
         return output.toString();
     }
+
     public static String printDistributedFromFragments(List<PlanFragment> allFragments, FunctionAndTypeManager functionAndTypeManager, Session session)
     {
         PlanNodeIdGenerator idGenerator = new PlanNodeIdGenerator();
@@ -272,6 +277,17 @@ public final class GraphvizPrinter
         }
 
         @Override
+        public Void visitSequence(SequenceNode node, Void context)
+        {
+            printNode(node, "SEQUENCE", NODE_COLORS.get(NodeType.SEQUENCE));
+            for (PlanNode planNode : node.getSources()) {
+                planNode.accept(this, context);
+            }
+
+            return null;
+        }
+
+        @Override
         public Void visitTableWriter(TableWriterNode node, Void context)
         {
             List<String> columns = new ArrayList<>();
@@ -342,10 +358,10 @@ public final class GraphvizPrinter
         public Void visitWindow(WindowNode node, Void context)
         {
             printNode(node, "Window", format("partition by = %s|order by = %s",
-                    Joiner.on(", ").join(node.getPartitionBy()),
-                    node.getOrderingScheme()
-                            .map(orderingScheme -> Joiner.on(", ").join(orderingScheme.getOrderByVariables()))
-                            .orElse("")),
+                            Joiner.on(", ").join(node.getPartitionBy()),
+                            node.getOrderingScheme()
+                                    .map(orderingScheme -> Joiner.on(", ").join(orderingScheme.getOrderByVariables()))
+                                    .orElse("")),
                     NODE_COLORS.get(NodeType.WINDOW));
             return node.getSource().accept(this, context);
         }
