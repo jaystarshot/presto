@@ -515,8 +515,7 @@ public class PruneUnreferencedOutputs
         @Override
         public PlanNode visitCteProducer(CteProducerNode node, RewriteContext<Set<VariableReferenceExpression>> context)
         {
-            Set<VariableReferenceExpression> expectedInputs = new HashSet<>();
-            expectedInputs.addAll(node.getOutputVariables());
+            Set<VariableReferenceExpression> expectedInputs = ImmutableSet.copyOf(node.getOutputVariables());
             PlanNode source = context.rewrite(node.getSource(), expectedInputs);
             return new CteProducerNode(node.getSourceLocation(), node.getId(), source, node.getCteName(), node.getRowCountVariable(), node.getOutputVariables());
         }
@@ -526,14 +525,10 @@ public class PruneUnreferencedOutputs
         {
             ImmutableSet.Builder<VariableReferenceExpression> cteProducersBuilder = ImmutableSet.builder();
             node.getCteProducers().forEach(leftSource -> cteProducersBuilder.addAll(leftSource.getOutputVariables()));
-
             Set<VariableReferenceExpression> leftInputs = cteProducersBuilder.build();
-
-            ImmutableSet.Builder<VariableReferenceExpression> primarySourceBuilder = ImmutableSet.builder();
-            primarySourceBuilder.addAll(node.getPrimarySource().getOutputVariables());
-            Set<VariableReferenceExpression> rightInputs = primarySourceBuilder.build();
-
-            List<PlanNode> cteProducers = node.getCteProducers().stream().map(leftSource -> context.rewrite(leftSource, leftInputs)).collect(Collectors.toList());
+            List<PlanNode> cteProducers = node.getCteProducers().stream()
+                    .map(leftSource -> context.rewrite(leftSource, leftInputs)).collect(toImmutableList());
+            Set<VariableReferenceExpression> rightInputs = ImmutableSet.copyOf(node.getPrimarySource().getOutputVariables());
             PlanNode primarySource = context.rewrite(node.getPrimarySource(), rightInputs);
             return new SequenceNode(node.getSourceLocation(), node.getId(), cteProducers, primarySource);
         }

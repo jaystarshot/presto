@@ -204,7 +204,7 @@ public abstract class BasePlanFragmenter
     @Override
     public PlanNode visitSequence(SequenceNode node, RewriteContext<FragmentProperties> context)
     {
-        //Since this is topologically sorted by the LogicalCtePlanner, need to make sure that execution order follows
+        // Since this is topologically sorted by the LogicalCtePlanner, need to make sure that execution order follows
         // Can be optimized further to avoid non dependents from getting blocked
         int n = node.getCteProducers().size();
         Preconditions.checkArgument(n >= 1, "Sequence Node has 0 cte producers");
