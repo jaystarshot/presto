@@ -42,8 +42,8 @@ public final class CteProducerNode
             @JsonProperty("id") PlanNodeId id,
             @JsonProperty("source") PlanNode source,
             @JsonProperty("cteName") String cteName,
-            VariableReferenceExpression rowCountVariable,
-            List<VariableReferenceExpression> originalOutputVariables)
+            @JsonProperty("rowCountVariable") VariableReferenceExpression rowCountVariable,
+            @JsonProperty("originalOutputVariables") List<VariableReferenceExpression> originalOutputVariables)
     {
         this(sourceLocation, id, Optional.empty(), source, cteName, rowCountVariable, originalOutputVariables);
     }

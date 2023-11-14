@@ -77,7 +77,7 @@ public class SqlPlannerContext
             this.rawCtePathMap = new HashMap<>();
         }
 
-        public void pushCteToNestedStack(String cteName, Query query)
+        public void push(String cteName, Query query)
         {
             this.cteStack.push(cteName);
             if (query.getWith().isPresent()) {
@@ -86,7 +86,7 @@ public class SqlPlannerContext
             }
         }
 
-        public void popCteFromNestedStack(Query query)
+        public void pop(Query query)
         {
             this.cteStack.pop();
             if (query.getWith().isPresent()) {

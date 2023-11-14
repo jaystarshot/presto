@@ -85,6 +85,7 @@ import java.util.stream.Collectors;
 
 import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.createSymbolReference;
 import static com.facebook.presto.sql.planner.plan.ExchangeNode.Type.REPARTITION;
+import static com.facebook.presto.sql.planner.planPrinter.PlanPrinter.getCteExecutionOrder;
 import static com.facebook.presto.sql.planner.planPrinter.PlanPrinter.getDynamicFilterAssignments;
 import static com.facebook.presto.sql.planner.planPrinter.TextRenderer.formatAsLong;
 import static com.facebook.presto.sql.planner.planPrinter.TextRenderer.formatDouble;
@@ -279,7 +280,8 @@ public final class GraphvizPrinter
         @Override
         public Void visitSequence(SequenceNode node, Void context)
         {
-            printNode(node, "SEQUENCE", NODE_COLORS.get(NodeType.SEQUENCE));
+            String expression = getCteExecutionOrder(node);
+            printNode(node, "Sequence", expression, NODE_COLORS.get(NodeType.SEQUENCE));
             for (PlanNode planNode : node.getSources()) {
                 planNode.accept(this, context);
             }
@@ -358,10 +360,10 @@ public final class GraphvizPrinter
         public Void visitWindow(WindowNode node, Void context)
         {
             printNode(node, "Window", format("partition by = %s|order by = %s",
-                            Joiner.on(", ").join(node.getPartitionBy()),
-                            node.getOrderingScheme()
-                                    .map(orderingScheme -> Joiner.on(", ").join(orderingScheme.getOrderByVariables()))
-                                    .orElse("")),
+                    Joiner.on(", ").join(node.getPartitionBy()),
+                    node.getOrderingScheme()
+                            .map(orderingScheme -> Joiner.on(", ").join(orderingScheme.getOrderByVariables()))
+                            .orElse("")),
                     NODE_COLORS.get(NodeType.WINDOW));
             return node.getSource().accept(this, context);
         }

@@ -115,6 +115,7 @@ import io.airlift.slice.Slice;
 import io.airlift.units.Duration;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -836,21 +837,28 @@ public class PlanPrinter
         @Override
         public Void visitSequence(SequenceNode node, Void context)
         {
-            addNode(node, "Sequence");
+            NodeRepresentation nodeOutput;
+            nodeOutput = addNode(node, "Sequence");
+            nodeOutput.appendDetails(getCteExecutionOrder(node));
+
             return processChildren(node, context);
         }
 
         @Override
         public Void visitCteConsumer(CteConsumerNode node, Void context)
         {
-            addNode(node, "CteConsumer");
+            NodeRepresentation nodeOutput;
+            nodeOutput = addNode(node, "CteConsumer");
+            nodeOutput.appendDetailsLine("CTE_NAME: %s", node.getCteName());
             return processChildren(node, context);
         }
 
         @Override
         public Void visitCteProducer(CteProducerNode node, Void context)
         {
-            addNode(node, "CteProducer");
+            NodeRepresentation nodeOutput;
+            nodeOutput = addNode(node, "CteProducer");
+            nodeOutput.appendDetailsLine("CTE_NAME: %s", node.getCteName());
             return processChildren(node, context);
         }
 
@@ -1384,6 +1392,22 @@ public class PlanPrinter
             representation.addNode(nodeOutput);
             return nodeOutput;
         }
+    }
+
+    public static String getCteExecutionOrder(SequenceNode node)
+    {
+        List<CteProducerNode> cteProducers = node.getCteProducers().stream()
+                .peek(c -> checkArgument(c instanceof CteProducerNode, "Child of sequence node is not an instance of CteProducerNode"))
+                .map(CteProducerNode.class::cast)
+                .collect(Collectors.toList());
+        if (cteProducers.isEmpty()) {
+            return "";
+        }
+        Collections.reverse(cteProducers);
+        return format("executionOrder = %s",
+                cteProducers.stream()
+                        .map(CteProducerNode::getCteName)
+                        .collect(Collectors.joining(" -> ", "{", "}")));
     }
 
     public static String getDynamicFilterAssignments(AbstractJoinNode node)

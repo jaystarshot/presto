@@ -169,7 +169,7 @@ public class HashGenerationOptimizer
                     .map(c ->
                             planAndEnforce(c, new HashComputationSet(), true, new HashComputationSet()).getNode())
                     .collect(ImmutableList.toImmutableList());
-            PlanWithProperties primarySource = planAndEnforce(node.getPrimarySource(), new HashComputationSet(), true, new HashComputationSet());
+            PlanWithProperties primarySource = plan(node.getPrimarySource(), context);
             return new PlanWithProperties(
                     replaceChildren(node, ImmutableList.<PlanNode>builder()
                             .addAll(cteProducers)

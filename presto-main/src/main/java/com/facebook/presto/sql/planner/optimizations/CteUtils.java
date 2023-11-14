@@ -67,7 +67,7 @@ public class CteUtils
 
     /*
         While Presto supports Varchar of length 0 (as discussed in https://github.com/trinodb/trino/issues/1136),
-        Hive does not support this as a bucketing type.
+        Hive does not support this.
      */
     private static boolean isSupportedVarcharType(VarcharType varcharType)
     {
