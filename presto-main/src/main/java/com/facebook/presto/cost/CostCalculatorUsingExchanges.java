@@ -16,11 +16,14 @@ package com.facebook.presto.cost;
 
 import com.facebook.presto.Session;
 import com.facebook.presto.spi.plan.AggregationNode;
+import com.facebook.presto.spi.plan.CteConsumerNode;
+import com.facebook.presto.spi.plan.CteProducerNode;
 import com.facebook.presto.spi.plan.FilterNode;
 import com.facebook.presto.spi.plan.LimitNode;
 import com.facebook.presto.spi.plan.OutputNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.ProjectNode;
+import com.facebook.presto.spi.plan.SequenceNode;
 import com.facebook.presto.spi.plan.TableScanNode;
 import com.facebook.presto.spi.plan.UnionNode;
 import com.facebook.presto.spi.plan.ValuesNode;
@@ -46,6 +49,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static com.facebook.presto.cost.CostCalculatorWithEstimatedExchanges.calculateCteProducerCost;
 import static com.facebook.presto.cost.CostCalculatorWithEstimatedExchanges.calculateJoinInputCost;
 import static com.facebook.presto.cost.CostCalculatorWithEstimatedExchanges.calculateLocalRepartitionCost;
 import static com.facebook.presto.cost.CostCalculatorWithEstimatedExchanges.calculateRemoteGatherCost;
@@ -153,6 +157,25 @@ public class CostCalculatorUsingExchanges
         {
             LocalCostEstimate localCost = LocalCostEstimate.ofCpu(getStats(node.getSource()).getOutputSizeInBytes(node.getSource()));
             return costForStreaming(node, localCost);
+        }
+
+        @Override
+        public PlanCostEstimate visitCteProducer(CteProducerNode node, Void context)
+        {
+            LocalCostEstimate localCost = calculateCteProducerCost(stats, node.getSource());
+            return costForStreaming(node, localCost);
+        }
+
+        @Override
+        public PlanCostEstimate visitCteConsumer(CteConsumerNode node, Void context)
+        {
+            return node.getOriginalSource().accept(this, context);
+        }
+
+        @Override
+        public PlanCostEstimate visitSequence(SequenceNode node, Void context)
+        {
+            return costForStreaming(node, LocalCostEstimate.zero());
         }
 
         @Override
@@ -339,6 +362,19 @@ public class CostCalculatorUsingExchanges
         private PlanCostEstimate costForStreaming(PlanNode node, LocalCostEstimate localCost)
         {
             PlanCostEstimate sourcesCost = getSourcesEstimations(node)
+                    .reduce(PlanCostEstimate.zero(), CostCalculatorUsingExchanges::addParallelSiblingsCost);
+            return new PlanCostEstimate(
+                    sourcesCost.getCpuCost() + localCost.getCpuCost(),
+                    max(
+                            sourcesCost.getMaxMemory(), // Streaming operator allocates insignificant amount of memory (usually none) before first input page is received
+                            sourcesCost.getMaxMemoryWhenOutputting() + localCost.getMaxMemory()),
+                    sourcesCost.getMaxMemoryWhenOutputting() + localCost.getMaxMemory(),
+                    sourcesCost.getNetworkCost() + localCost.getNetworkCost());
+        }
+
+        private PlanCostEstimate costForStreamingForCteConsumer(CteConsumerNode node, LocalCostEstimate localCost)
+        {
+            PlanCostEstimate sourcesCost = getSourcesEstimations(node.getStatsEquivalentPlanNode().get())
                     .reduce(PlanCostEstimate.zero(), CostCalculatorUsingExchanges::addParallelSiblingsCost);
             return new PlanCostEstimate(
                     sourcesCost.getCpuCost() + localCost.getCpuCost(),
