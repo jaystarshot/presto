@@ -45,14 +45,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.facebook.presto.SystemSessionProperties.getCteMaterializationStrategy;
 import static com.facebook.presto.SystemSessionProperties.getHashPartitionCount;
 import static com.facebook.presto.SystemSessionProperties.getPartitioningProviderCatalog;
-import static com.facebook.presto.SystemSessionProperties.isMaterializeAllCtes;
 import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
 import static com.facebook.presto.sql.TemporaryTableUtil.assignPartitioningVariables;
 import static com.facebook.presto.sql.TemporaryTableUtil.assignTemporaryTableColumnNames;
 import static com.facebook.presto.sql.TemporaryTableUtil.createTemporaryTableScan;
 import static com.facebook.presto.sql.TemporaryTableUtil.createTemporaryTableWriteWithoutExchanges;
+import static com.facebook.presto.sql.analyzer.FeaturesConfig.CteMaterializationStrategy.ALL;
 import static com.facebook.presto.sql.planner.optimizations.CteUtils.getCtePartitionIndex;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
@@ -86,7 +87,7 @@ public class PhysicalCteOptimizer
     @Override
     public PlanOptimizerResult optimize(PlanNode plan, Session session, TypeProvider types, VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator, WarningCollector warningCollector)
     {
-        if (!isMaterializeAllCtes(session)
+        if (!getCteMaterializationStrategy(session).equals(ALL)
                 || session.getCteInformationCollector().getCTEInformationList().stream().noneMatch(CTEInformation::isMaterialized)) {
             return PlanOptimizerResult.optimizerResult(plan, false);
         }

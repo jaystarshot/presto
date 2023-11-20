@@ -17,14 +17,12 @@ import com.facebook.presto.spi.SourceLocation;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.Iterables;
 
 import javax.annotation.concurrent.Immutable;
 
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.singletonList;
 
 @Immutable
@@ -86,7 +84,7 @@ public final class CteProducerNode
     public PlanNode replaceChildren(List<PlanNode> newChildren)
     {
         checkArgument(newChildren.size() == 1, "expected newChildren to contain 1 node");
-        return new CteProducerNode(newChildren.get(0).getSourceLocation(), getId(), getStatsEquivalentPlanNode(), Iterables.getOnlyElement(newChildren),
+        return new CteProducerNode(newChildren.get(0).getSourceLocation(), getId(), getStatsEquivalentPlanNode(), newChildren.get(0),
                 cteName, rowCountVariable, originalOutputVariables);
     }
 
@@ -110,5 +108,12 @@ public final class CteProducerNode
     public VariableReferenceExpression getRowCountVariable()
     {
         return rowCountVariable;
+    }
+
+    private static void checkArgument(boolean condition, String message)
+    {
+        if (!condition) {
+            throw new IllegalArgumentException(message);
+        }
     }
 }

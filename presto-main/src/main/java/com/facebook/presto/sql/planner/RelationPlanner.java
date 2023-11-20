@@ -107,8 +107,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
+import static com.facebook.presto.SystemSessionProperties.getCteMaterializationStrategy;
 import static com.facebook.presto.SystemSessionProperties.getQueryAnalyzerTimeout;
-import static com.facebook.presto.SystemSessionProperties.isMaterializeAllCtes;
 import static com.facebook.presto.common.type.TypeUtils.isEnumType;
 import static com.facebook.presto.metadata.MetadataUtil.createQualifiedObjectName;
 import static com.facebook.presto.spi.StandardErrorCode.QUERY_PLANNING_TIMEOUT;
@@ -118,6 +118,7 @@ import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.createSymbolR
 import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.getSourceLocation;
 import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.isEqualComparisonExpression;
 import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.resolveEnumLiteral;
+import static com.facebook.presto.sql.analyzer.FeaturesConfig.CteMaterializationStrategy.ALL;
 import static com.facebook.presto.sql.analyzer.SemanticExceptions.notSupportedException;
 import static com.facebook.presto.sql.planner.PlannerUtils.newVariable;
 import static com.facebook.presto.sql.planner.TranslateExpressionsUtil.toRowExpression;
@@ -186,7 +187,7 @@ class RelationPlanner
             context.getNestedCteStack().push(cteName, namedQuery.getQuery());
             RelationPlan subPlan = process(namedQuery.getQuery(), context);
             context.getNestedCteStack().pop(namedQuery.getQuery());
-            boolean shouldBeMaterialized = isMaterializeAllCtes(session) && isCteMaterializable(subPlan.getRoot().getOutputVariables());
+            boolean shouldBeMaterialized = getCteMaterializationStrategy(session).equals(ALL) && isCteMaterializable(subPlan.getRoot().getOutputVariables());
             session.getCteInformationCollector().addCTEReference(cteName, namedQuery.isFromView(), shouldBeMaterialized);
             if (shouldBeMaterialized) {
                 subPlan = new RelationPlan(

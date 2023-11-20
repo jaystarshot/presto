@@ -207,7 +207,7 @@ public abstract class BasePlanFragmenter
         // Since this is topologically sorted by the LogicalCtePlanner, need to make sure that execution order follows
         // Can be optimized further to avoid non dependents from getting blocked
         int n = node.getCteProducers().size();
-        Preconditions.checkArgument(n >= 1, "Sequence Node has 0 cte producers");
+        checkArgument(n >= 1, "Sequence Node has 0 cte producers");
         PlanNode source = node.getCteProducers().get(n - 1);
         FragmentProperties childProperties = new FragmentProperties(new PartitioningScheme(
                 Partitioning.create(SINGLE_DISTRIBUTION, ImmutableList.of()),
