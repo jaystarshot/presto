@@ -18,6 +18,7 @@ import com.facebook.presto.Session;
 import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.IntersectNode;
 import com.facebook.presto.spi.plan.PlanNode;
+import com.facebook.presto.spi.plan.SequenceNode;
 import com.facebook.presto.spi.plan.UnionNode;
 import com.facebook.presto.sql.planner.iterative.GroupReference;
 import com.facebook.presto.sql.planner.iterative.rule.DetermineJoinDistributionType;
@@ -34,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static com.facebook.presto.cost.LocalCostEstimate.addPartialComponents;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -166,6 +168,13 @@ public class CostCalculatorWithEstimatedExchanges
         }
 
         @Override
+        public LocalCostEstimate visitSequence(SequenceNode node, Void context)
+        {
+            return addPartialComponents(node.getSources().stream().map(n -> n.accept(this, context))
+                    .collect(toImmutableList()));
+        }
+
+        @Override
         public LocalCostEstimate visitIntersect(IntersectNode node, Void context)
         {
             // Similar to Union
@@ -187,6 +196,13 @@ public class CostCalculatorWithEstimatedExchanges
     public static LocalCostEstimate calculateRemoteRepartitionCost(double inputSizeInBytes)
     {
         return LocalCostEstimate.of(inputSizeInBytes, 0, inputSizeInBytes);
+    }
+
+    public static LocalCostEstimate calculateCteProducerCost(StatsProvider statsProvider, PlanNode source)
+    {
+        double inputSizeInBytes = statsProvider.getStats(source).getOutputSizeInBytes(source);
+        // default HDFS replication is 3
+        return LocalCostEstimate.of(3 * inputSizeInBytes, 0, 3 * inputSizeInBytes);
     }
 
     public static LocalCostEstimate calculateLocalRepartitionCost(double inputSizeInBytes)
