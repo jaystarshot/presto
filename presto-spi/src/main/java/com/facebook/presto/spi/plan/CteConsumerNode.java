@@ -17,14 +17,12 @@ import com.facebook.presto.spi.SourceLocation;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableList;
 
 import javax.annotation.concurrent.Immutable;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 @Immutable
 public final class CteConsumerNode
@@ -59,7 +57,7 @@ public final class CteConsumerNode
     public List<PlanNode> getSources()
     {
         // CteConsumer should be the leaf node
-        return ImmutableList.of();
+        return Collections.emptyList();
     }
 
     @Override
@@ -91,5 +89,12 @@ public final class CteConsumerNode
     public String getCteName()
     {
         return cteName;
+    }
+
+    private static void checkArgument(boolean condition, String message)
+    {
+        if (!condition) {
+            throw new IllegalArgumentException(message);
+        }
     }
 }

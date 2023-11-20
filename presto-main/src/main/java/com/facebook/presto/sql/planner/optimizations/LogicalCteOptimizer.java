@@ -39,8 +39,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
 
-import static com.facebook.presto.SystemSessionProperties.isMaterializeAllCtes;
+import static com.facebook.presto.SystemSessionProperties.getCteMaterializationStrategy;
 import static com.facebook.presto.common.type.BigintType.BIGINT;
+import static com.facebook.presto.sql.analyzer.FeaturesConfig.CteMaterializationStrategy.ALL;
 import static com.google.common.base.Preconditions.checkArgument;
 
 /*
@@ -79,7 +80,7 @@ public class LogicalCteOptimizer
     @Override
     public PlanOptimizerResult optimize(PlanNode plan, Session session, TypeProvider types, VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator, WarningCollector warningCollector)
     {
-        if (!isMaterializeAllCtes(session)
+        if (!getCteMaterializationStrategy(session).equals(ALL)
                 || session.getCteInformationCollector().getCTEInformationList().stream().noneMatch(CTEInformation::isMaterialized)) {
             return PlanOptimizerResult.optimizerResult(plan, false);
         }

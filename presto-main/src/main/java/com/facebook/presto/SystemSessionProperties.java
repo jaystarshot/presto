@@ -2294,9 +2294,9 @@ public final class SystemSessionProperties
         return session.getSystemProperty(FILTER_AND_PROJECT_MIN_OUTPUT_PAGE_SIZE, DataSize.class);
     }
 
-    public static boolean isMaterializeAllCtes(Session session)
+    public static CteMaterializationStrategy getCteMaterializationStrategy(Session session)
     {
-        return session.getSystemProperty(CTE_MATERIALIZATION_STRATEGY, CteMaterializationStrategy.class).equals(CteMaterializationStrategy.ALL);
+        return session.getSystemProperty(CTE_MATERIALIZATION_STRATEGY, CteMaterializationStrategy.class);
     }
 
     public static int getFilterAndProjectMinOutputPageRowCount(Session session)
