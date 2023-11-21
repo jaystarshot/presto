@@ -1397,7 +1397,7 @@ public class PlanPrinter
     public static String getCteExecutionOrder(SequenceNode node)
     {
         List<CteProducerNode> cteProducers = node.getCteProducers().stream()
-                .peek(c -> checkArgument(c instanceof CteProducerNode, "Child of sequence node is not an instance of CteProducerNode"))
+                .filter(c -> (c instanceof CteProducerNode))
                 .map(CteProducerNode.class::cast)
                 .collect(Collectors.toList());
         if (cteProducers.isEmpty()) {

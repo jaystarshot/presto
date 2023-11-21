@@ -177,7 +177,8 @@ public class PhysicalCteOptimizer
                     actualSource.getOutputVariables(),
                     variableToColumnMap,
                     partitioningMetadata,
-                    node.getRowCountVariable());
+                    node.getRowCountVariable())
+                    .assignStatsEquivalentPlanNode(node.getStatsEquivalentPlanNode());
         }
     }
 
@@ -234,7 +235,8 @@ public class PhysicalCteOptimizer
                 assignments.put(node.getOutputVariables().get(i), intermediateReferenceMap.get(tableInfo.getOriginalOutputVariables().get(i)));
             }
             return new ProjectNode(Optional.empty(), idAllocator.getNextId(), Optional.empty(),
-                    tableScanNode, assignments.build(), ProjectNode.Locality.LOCAL);
+                    tableScanNode, assignments.build(), ProjectNode.Locality.LOCAL)
+                    .assignStatsEquivalentPlanNode(node.getStatsEquivalentPlanNode());
         }
     }
 

@@ -80,6 +80,12 @@ public final class CteProducerNode
         return originalOutputVariables;
     }
 
+    @JsonProperty
+    public List<VariableReferenceExpression> getOriginalOutputVariables()
+    {
+        return originalOutputVariables;
+    }
+
     @Override
     public PlanNode replaceChildren(List<PlanNode> newChildren)
     {
@@ -100,6 +106,7 @@ public final class CteProducerNode
         return visitor.visitCteProducer(this, context);
     }
 
+    @JsonProperty
     public String getCteName()
     {
         return cteName;

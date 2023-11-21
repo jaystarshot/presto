@@ -63,6 +63,7 @@ public final class CteConsumerNode
         return Collections.emptyList();
     }
 
+    @JsonProperty
     @Override
     public List<VariableReferenceExpression> getOutputVariables()
     {
@@ -85,6 +86,7 @@ public final class CteConsumerNode
                 statsEquivalentPlanNode, originalOutputVariables, cteName, originalSource);
     }
 
+    @JsonProperty
     public PlanNode getOriginalSource()
     {
         return originalSource;
@@ -96,6 +98,7 @@ public final class CteConsumerNode
         return visitor.visitCteConsumer(this, context);
     }
 
+    @JsonProperty
     public String getCteName()
     {
         return cteName;

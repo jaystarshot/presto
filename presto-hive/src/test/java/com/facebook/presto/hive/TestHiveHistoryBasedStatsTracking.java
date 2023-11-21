@@ -31,7 +31,9 @@ import com.google.common.collect.ImmutableList;
 import org.intellij.lang.annotations.Language;
 import org.testng.annotations.Test;
 
+import static com.facebook.presto.SystemSessionProperties.CTE_MATERIALIZATION_STRATEGY;
 import static com.facebook.presto.SystemSessionProperties.JOIN_DISTRIBUTION_TYPE;
+import static com.facebook.presto.SystemSessionProperties.PARTITIONING_PROVIDER_CATALOG;
 import static com.facebook.presto.SystemSessionProperties.RESTRICT_HISTORY_BASED_OPTIMIZATION_TO_COMPLEX_QUERY;
 import static com.facebook.presto.SystemSessionProperties.TRACK_HISTORY_BASED_PLAN_STATISTICS;
 import static com.facebook.presto.SystemSessionProperties.USE_HISTORY_BASED_PLAN_STATISTICS;
@@ -151,6 +153,29 @@ public class TestHiveHistoryBasedStatsTracking
         }
     }
 
+    @Test
+    public void testSimpleCteMaterialization()
+    {
+        String query = "WITH  temp as (SELECT orderkey FROM orders) " +
+                "SELECT * FROM temp t1 ";
+//        assertPlan(
+//                "SELECT O.totalprice, C.name FROM orders O JOIN (SELECT name, custkey FROM customer UNION ALL SELECT * FROM (VALUES ('unknown', NULL)) t(name, custkey)) C ON C.custkey = O.custkey AND YEAR(O.orderdate) = 1995",
+//                anyTree(node(JoinNode.class, anyTree(any()), anyTree(any())).withOutputRowCount(2204).withJoinStatistics(1501, 1, 2204, 0)));
+
+        // CBO stats
+        // CBO Statistics
+        executeAndTrackHistory(query, createMaterializedSession());
+
+        // CBO stats
+        executeAndTrackHistory(query, createMaterializedSession());
+//        assertSamePlanHash(
+//                query1,
+//                getMaterializedSession(),
+//                query1,
+//                getMaterializedSession(),
+//                CONNECTOR);
+    }
+
     @Override
     protected void assertPlan(@Language("SQL") String query, PlanMatchPattern pattern)
     {
@@ -159,11 +184,16 @@ public class TestHiveHistoryBasedStatsTracking
 
     private void executeAndTrackHistory(String sql)
     {
+        executeAndTrackHistory(sql, createSession());
+    }
+
+    private void executeAndTrackHistory(String sql, Session session)
+    {
         DistributedQueryRunner queryRunner = (DistributedQueryRunner) getQueryRunner();
         SqlQueryManager sqlQueryManager = (SqlQueryManager) queryRunner.getCoordinator().getQueryManager();
         InMemoryHistoryBasedPlanStatisticsProvider provider = (InMemoryHistoryBasedPlanStatisticsProvider) sqlQueryManager.getHistoryBasedPlanStatisticsTracker().getHistoryBasedPlanStatisticsProvider();
 
-        queryRunner.execute(createSession(), sql);
+        queryRunner.execute(session, sql);
         provider.waitProcessQueryEvents();
     }
 
@@ -175,6 +205,14 @@ public class TestHiveHistoryBasedStatsTracking
                 .setSystemProperty(JOIN_DISTRIBUTION_TYPE, "automatic")
                 .setCatalogSessionProperty(HIVE_CATALOG, PUSHDOWN_FILTER_ENABLED, "true")
                 .setSystemProperty(RESTRICT_HISTORY_BASED_OPTIMIZATION_TO_COMPLEX_QUERY, "false")
+                .build();
+    }
+
+    public Session createMaterializedSession()
+    {
+        return Session.builder(createSession())
+                .setSystemProperty(CTE_MATERIALIZATION_STRATEGY, "ALL")
+                .setSystemProperty(PARTITIONING_PROVIDER_CATALOG, "hive")
                 .build();
     }
 }

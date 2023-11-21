@@ -39,6 +39,8 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
+import static com.facebook.presto.SystemSessionProperties.CTE_MATERIALIZATION_STRATEGY;
+import static com.facebook.presto.SystemSessionProperties.PARTITIONING_PROVIDER_CATALOG;
 import static com.facebook.presto.SystemSessionProperties.RESTRICT_HISTORY_BASED_OPTIMIZATION_TO_COMPLEX_QUERY;
 import static com.facebook.presto.SystemSessionProperties.USE_HISTORY_BASED_PLAN_STATISTICS;
 import static com.facebook.presto.SystemSessionProperties.USE_PERFECTLY_CONSISTENT_HISTORIES;
@@ -49,8 +51,12 @@ import static com.facebook.presto.hive.HiveSessionProperties.PUSHDOWN_FILTER_ENA
 import static com.facebook.presto.sql.planner.CanonicalPlanGenerator.generateCanonicalPlan;
 import static com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS;
 import static com.google.common.graph.Traverser.forTree;
+import static io.airlift.tpch.TpchTable.CUSTOMER;
 import static io.airlift.tpch.TpchTable.LINE_ITEM;
+import static io.airlift.tpch.TpchTable.NATION;
 import static io.airlift.tpch.TpchTable.ORDERS;
+import static io.airlift.tpch.TpchTable.PART;
+import static io.airlift.tpch.TpchTable.REGION;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 import static org.testng.Assert.assertTrue;
@@ -62,7 +68,7 @@ public class TestHiveCanonicalPlanHashes
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        QueryRunner queryRunner = HiveQueryRunner.createQueryRunner(ImmutableList.of(ORDERS, LINE_ITEM));
+        QueryRunner queryRunner = HiveQueryRunner.createQueryRunner(ImmutableList.of(ORDERS, LINE_ITEM, CUSTOMER, NATION, REGION, PART));
         queryRunner.installPlugin(new Plugin()
         {
             @Override
@@ -136,6 +142,70 @@ public class TestHiveCanonicalPlanHashes
         }
     }
 
+    // Tests for CTE materialization
+    @Test
+
+    public void testCteMaterialization()
+            throws Exception
+    {
+        QueryRunner queryRunner = getQueryRunner();
+
+        String query1 = "WITH  temp as (SELECT orderkey FROM orders) " +
+                "SELECT * FROM temp t1 ";
+        assertSamePlanHash(
+                query1,
+                createMaterializedSession(),
+                query1,
+                createMaterializedSession(),
+                CONNECTOR);
+
+        assertSamePlanHash(
+                "WITH  cte1 AS (SELECT orderkey FROM orders WHERE orderkey < 100), " +
+                        "      cte2 AS (SELECT custkey FROM customer WHERE custkey < 50) " +
+                        "SELECT * FROM cte1, cte2 WHERE cte1.orderkey = cte2.custkey",
+                createMaterializedSession(),
+                "WITH  cte2 AS (SELECT custkey FROM customer WHERE custkey < 50), " +
+                        " cte1 AS (SELECT orderkey FROM orders WHERE orderkey < 100)   " +
+                        "SELECT * FROM cte1, cte2 WHERE cte1.orderkey = cte2.custkey",
+                createMaterializedSession(),
+                CONNECTOR);
+
+        assertDifferentPlanHash(
+                "WITH  cte1 AS (SELECT orderkey FROM orders WHERE orderkey < 100), " +
+                        "      cte2 AS (SELECT custkey FROM customer WHERE custkey < 50) " +
+                        "SELECT * FROM cte1, cte2 WHERE cte1.orderkey = cte2.custkey",
+                createMaterializedSession(),
+                "WITH  cte2 AS (SELECT orderkey FROM orders WHERE orderkey < 100), " +
+                        "      cte1 AS (SELECT custkey FROM customer WHERE custkey < 50) " +
+                        "SELECT * FROM cte1, cte2 WHERE cte2.orderkey = cte1.custkey",
+                createMaterializedSession(),
+                CONNECTOR);
+
+        String complexQuery = "WITH  customer_nation AS (" +
+                "   SELECT c.custkey, c.name, n.name AS nation_name, r.name AS region_name " +
+                "   FROM CUSTOMER c " +
+                "   JOIN NATION n ON c.nationkey = n.nationkey " +
+                "   JOIN REGION r ON n.regionkey = r.regionkey), " +
+                " customer_orders AS (" +
+                "   SELECT co.custkey, co.name, co.nation_name, co.region_name, o.orderkey, o.orderdate " +
+                "   FROM customer_nation co " +
+                "   JOIN ORDERS o ON co.custkey = o.custkey), " +
+                "order_lineitems AS (" +
+                "   SELECT co.*, l.partkey, l.quantity, l.extendedprice " +
+                "   FROM customer_orders co " +
+                "   JOIN lineitem l ON co.orderkey = l.orderkey), " +
+                " customer_part_analysis AS (" +
+                "   SELECT ol.*, p.name AS part_name, p.type AS part_type " +
+                "   FROM order_lineitems ol " +
+                "   JOIN PART p ON ol.partkey = p.partkey) " +
+                "SELECT * FROM customer_part_analysis " +
+                "WHERE region_name = 'AMERICA' " +
+                "ORDER BY nation_name, custkey, orderdate";
+        assertSamePlanHash(complexQuery, createMaterializedSession(),
+                complexQuery, createMaterializedSession(),
+                CONNECTOR);
+    }
+
     @Test
     public void testStatsEquivalentNodeMarking()
     {
@@ -159,6 +229,14 @@ public class TestHiveCanonicalPlanHashes
         }
     }
 
+    private void assertSamePlanHash(String sql1, Session session1, String sql2, Session session2, PlanCanonicalizationStrategy strategy)
+            throws Exception
+    {
+        String hashes1 = getPlanHash(sql1, session1, strategy);
+        String hashes2 = getPlanHash(sql2, session2, strategy);
+        assertEquals(hashes1, hashes2);
+    }
+
     private void assertSamePlanHash(String sql1, String sql2, PlanCanonicalizationStrategy strategy)
             throws Exception
     {
@@ -167,12 +245,29 @@ public class TestHiveCanonicalPlanHashes
         assertEquals(hashes1, hashes2);
     }
 
+    private void assertDifferentPlanHash(String sql1, Session session1, String sql2, Session session2, PlanCanonicalizationStrategy strategy)
+            throws Exception
+    {
+        String hashes1 = getPlanHash(sql1, session1, strategy);
+        String hashes2 = getPlanHash(sql2, session2, strategy);
+        assertNotEquals(hashes1, hashes2);
+    }
+
     private void assertDifferentPlanHash(String sql1, String sql2, PlanCanonicalizationStrategy strategy)
             throws Exception
     {
         String hashes1 = getPlanHash(sql1, strategy);
         String hashes2 = getPlanHash(sql2, strategy);
         assertNotEquals(hashes1, hashes2);
+    }
+
+    private String getPlanHash(String sql, Session session, PlanCanonicalizationStrategy strategy)
+            throws Exception
+    {
+        PlanNode plan = plan(sql, session).getRoot();
+        ObjectMapper objectMapper = createObjectMapper();
+        assertTrue(plan.getStatsEquivalentPlanNode().isPresent());
+        return objectMapper.writeValueAsString(generateCanonicalPlan(plan.getStatsEquivalentPlanNode().get(), strategy, objectMapper, session).get());
     }
 
     private String getPlanHash(String sql, PlanCanonicalizationStrategy strategy)
@@ -205,6 +300,14 @@ public class TestHiveCanonicalPlanHashes
                 .setSystemProperty(USE_PERFECTLY_CONSISTENT_HISTORIES, "true")
                 .setCatalogSessionProperty(HIVE_CATALOG, PUSHDOWN_FILTER_ENABLED, "true")
                 .setSystemProperty(RESTRICT_HISTORY_BASED_OPTIMIZATION_TO_COMPLEX_QUERY, "false")
+                .build();
+    }
+
+    public Session createMaterializedSession()
+    {
+        return Session.builder(createSession())
+                .setSystemProperty(CTE_MATERIALIZATION_STRATEGY, "ALL")
+                .setSystemProperty(PARTITIONING_PROVIDER_CATALOG, "hive")
                 .build();
     }
 }

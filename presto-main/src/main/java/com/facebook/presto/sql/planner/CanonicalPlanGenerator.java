@@ -24,6 +24,8 @@ import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.AggregationNode.Aggregation;
 import com.facebook.presto.spi.plan.AggregationNode.GroupingSetDescriptor;
 import com.facebook.presto.spi.plan.Assignments;
+import com.facebook.presto.spi.plan.CteConsumerNode;
+import com.facebook.presto.spi.plan.CteProducerNode;
 import com.facebook.presto.spi.plan.DistinctLimitNode;
 import com.facebook.presto.spi.plan.FilterNode;
 import com.facebook.presto.spi.plan.LimitNode;
@@ -34,6 +36,7 @@ import com.facebook.presto.spi.plan.OutputNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.plan.ProjectNode;
+import com.facebook.presto.spi.plan.SequenceNode;
 import com.facebook.presto.spi.plan.TableScanNode;
 import com.facebook.presto.spi.plan.TopNNode;
 import com.facebook.presto.spi.plan.UnionNode;
@@ -69,6 +72,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
@@ -199,6 +203,93 @@ public class CanonicalPlanGenerator
                 Optional.empty());
         context.addPlan(node, new CanonicalPlan(result, strategy));
         return Optional.of(result);
+    }
+
+    @Override
+    public Optional<PlanNode> visitSequence(SequenceNode node, Context context)
+    {
+        if (strategy == DEFAULT) {
+            return Optional.empty();
+        }
+        List<CteProducerNode> canonicalSources = new ArrayList<>();
+        for (PlanNode cteProducer : node.getCteProducers()) {
+            Optional<PlanNode> source = cteProducer.accept(this, new Context());
+            if (!source.isPresent()) {
+                return Optional.empty();
+            }
+            canonicalSources.add((CteProducerNode) source.get());
+        }
+        // Sort based on cte names
+        canonicalSources.sort(Comparator.comparing(CteProducerNode::getCteName));
+
+        Optional<PlanNode> source = node.getPrimarySource().accept(this, context);
+        if (!source.isPresent()) {
+            return Optional.empty();
+        }
+
+        // Rewrite OutputNode as ProjectNode
+        PlanNode canonicalPlan = new SequenceNode(
+                Optional.empty(),
+                planNodeidAllocator.getNextId(),
+                new ArrayList<PlanNode>(canonicalSources),
+                source.get());
+        context.addPlan(node, new CanonicalPlan(canonicalPlan, strategy));
+
+        return Optional.of(canonicalPlan);
+    }
+
+    @Override
+    public Optional<PlanNode> visitCteConsumer(CteConsumerNode node, Context context)
+    {
+        if (strategy == DEFAULT) {
+            return Optional.empty();
+        }
+        Optional<PlanNode> source = node.getOriginalSource().accept(this, context);
+        if (!source.isPresent()) {
+            return Optional.empty();
+        }
+        List<VariableReferenceExpression> outputVariables = node.getOutputVariables().stream()
+                .map(variable -> inlineAndCanonicalize(context.getExpressions(), variable))
+                .sorted()
+                .collect(toImmutableList());
+        // Rewrite OutputNode as ProjectNode
+        PlanNode canonicalPlan = new CteConsumerNode(
+                Optional.empty(),
+                planNodeidAllocator.getNextId(),
+                outputVariables,
+                node.getCteName(),
+                source.get());
+        context.addPlan(node, new CanonicalPlan(canonicalPlan, strategy));
+
+        return Optional.of(canonicalPlan);
+    }
+
+    @Override
+    public Optional<PlanNode> visitCteProducer(CteProducerNode node, Context context)
+    {
+        if (strategy == DEFAULT) {
+            return Optional.empty();
+        }
+        Optional<PlanNode> source = node.getSource().accept(this, context);
+        if (!source.isPresent()) {
+            return Optional.empty();
+        }
+        List<VariableReferenceExpression> outputVariables = node.getOutputVariables().stream()
+                .map(variable -> inlineAndCanonicalize(context.getExpressions(), variable))
+                .sorted()
+                .collect(toImmutableList());
+        // Rewrite OutputNode as ProjectNode
+        PlanNode canonicalPlan = new CteProducerNode(
+                Optional.empty(),
+                planNodeidAllocator.getNextId(),
+                source.get(),
+                node.getCteName(),
+                // We replace the rowCount Variable with the canonical name.
+                node.getRowCountVariable(),
+                outputVariables);
+        context.addPlan(node, new CanonicalPlan(canonicalPlan, strategy));
+
+        return Optional.of(canonicalPlan);
     }
 
     @Override
