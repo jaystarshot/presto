@@ -199,6 +199,26 @@ public class TestHiveCanonicalPlanGenerator
         }
     }
 
+    // Physical Nodes cannot be tested here because we need the hive queryrunner
+    @Test
+    public void testSimpleCteNodes()
+            throws Exception
+    {
+
+    }
+
+    @Test
+    public void testComplexCteNodes()
+    {
+
+    }
+
+    @Test
+    public void testSimpleCteMaterialization()
+    {
+
+    }
+
     private Session pushdownFilterEnabled()
     {
         return Session.builder(getQueryRunner().getDefaultSession())
