@@ -26,6 +26,7 @@ import com.facebook.presto.spi.plan.AggregationNode.GroupingSetDescriptor;
 import com.facebook.presto.spi.plan.Assignments;
 import com.facebook.presto.spi.plan.CteConsumerNode;
 import com.facebook.presto.spi.plan.CteProducerNode;
+import com.facebook.presto.spi.plan.CteReferenceNode;
 import com.facebook.presto.spi.plan.DistinctLimitNode;
 import com.facebook.presto.spi.plan.FilterNode;
 import com.facebook.presto.spi.plan.LimitNode;
@@ -236,6 +237,21 @@ public class CanonicalPlanGenerator
         context.addPlan(node, new CanonicalPlan(canonicalPlan, strategy));
 
         return Optional.of(canonicalPlan);
+    }
+
+    @Override
+    public Optional<PlanNode> visitCteReference(CteReferenceNode node, Context context)
+    {
+        if (strategy == DEFAULT) {
+            return Optional.empty();
+        }
+        Optional<PlanNode> source = node.getSource().accept(this, context);
+        if (!source.isPresent()) {
+            return Optional.empty();
+        }
+        context.addPlan(node, new CanonicalPlan(source.get(), strategy));
+
+        return Optional.of(source.get());
     }
 
     @Override

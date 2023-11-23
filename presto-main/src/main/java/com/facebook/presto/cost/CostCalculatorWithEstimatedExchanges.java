@@ -202,7 +202,7 @@ public class CostCalculatorWithEstimatedExchanges
     {
         double inputSizeInBytes = statsProvider.getStats(source).getOutputSizeInBytes(source);
         // default HDFS replication is 3
-        return LocalCostEstimate.of(3 * inputSizeInBytes, 0, 3 * inputSizeInBytes);
+        return LocalCostEstimate.of(3 * inputSizeInBytes, 0, inputSizeInBytes);
     }
 
     public static LocalCostEstimate calculateLocalRepartitionCost(double inputSizeInBytes)

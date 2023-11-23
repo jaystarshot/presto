@@ -14,6 +14,10 @@
 package com.facebook.presto.sql.planner.optimizations;
 
 import com.facebook.presto.Session;
+import com.facebook.presto.cost.CostCalculator;
+import com.facebook.presto.cost.CostCalculatorUsingExchanges;
+import com.facebook.presto.cost.CostComparator;
+import com.facebook.presto.cost.TaskCountEstimator;
 import com.facebook.presto.sql.Optimizer;
 import com.facebook.presto.sql.planner.assertions.BasePlanTest;
 import com.facebook.presto.sql.planner.assertions.PlanMatchPattern;
@@ -31,6 +35,7 @@ import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.join;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.sequence;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.tableScan;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.values;
+import static com.sun.org.apache.xalan.internal.xsltc.dom.SimpleResultTreeImpl.NUMBER_OF_NODES;
 
 public class TestLogicalCteOptimizer
         extends BasePlanTest
@@ -197,8 +202,12 @@ public class TestLogicalCteOptimizer
 
     private void assertUnitPlan(String sql, PlanMatchPattern pattern)
     {
+        TaskCountEstimator taskCountEstimator = new TaskCountEstimator(() -> NUMBER_OF_NODES);
+        CostCalculator costCalculatorUsingExchanges = new CostCalculatorUsingExchanges(taskCountEstimator);
         List<PlanOptimizer> optimizers = ImmutableList.of(
-                new LogicalCteOptimizer(getQueryRunner().getMetadata()));
+                new LogicalCteOptimizer(getQueryRunner().getMetadata(), new CostComparator(1, 1, 1),
+                        getQueryRunner().getCostCalculator(),
+                        getQueryRunner().getStatsCalculator()));
         assertPlan(sql, getSession(), Optimizer.PlanStage.OPTIMIZED, pattern, optimizers);
     }
 

@@ -118,7 +118,7 @@ import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.createSymbolR
 import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.getSourceLocation;
 import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.isEqualComparisonExpression;
 import static com.facebook.presto.sql.analyzer.ExpressionTreeUtils.resolveEnumLiteral;
-import static com.facebook.presto.sql.analyzer.FeaturesConfig.CteMaterializationStrategy.ALL;
+import static com.facebook.presto.sql.analyzer.FeaturesConfig.CteMaterializationStrategy.NONE;
 import static com.facebook.presto.sql.analyzer.SemanticExceptions.notSupportedException;
 import static com.facebook.presto.sql.planner.PlannerUtils.newVariable;
 import static com.facebook.presto.sql.planner.TranslateExpressionsUtil.toRowExpression;
@@ -187,7 +187,7 @@ class RelationPlanner
             context.getNestedCteStack().push(cteName, namedQuery.getQuery());
             RelationPlan subPlan = process(namedQuery.getQuery(), context);
             context.getNestedCteStack().pop(namedQuery.getQuery());
-            boolean shouldBeMaterialized = getCteMaterializationStrategy(session).equals(ALL) && isCteMaterializable(subPlan.getRoot().getOutputVariables());
+            boolean shouldBeMaterialized = !getCteMaterializationStrategy(session).equals(NONE) && isCteMaterializable(subPlan.getRoot().getOutputVariables());
             session.getCteInformationCollector().addCTEReference(cteName, namedQuery.isFromView(), shouldBeMaterialized);
             if (shouldBeMaterialized) {
                 subPlan = new RelationPlan(

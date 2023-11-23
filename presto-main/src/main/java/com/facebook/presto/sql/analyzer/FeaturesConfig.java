@@ -346,7 +346,8 @@ public class FeaturesConfig
     public enum CteMaterializationStrategy
     {
         ALL, // Materialize all CTES
-        NONE // Materialize no ctes
+        NONE, // Materialize no CTES
+        COST_BASED
     }
 
     public enum TaskSpillingStrategy

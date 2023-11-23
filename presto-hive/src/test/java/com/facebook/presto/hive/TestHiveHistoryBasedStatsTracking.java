@@ -176,6 +176,52 @@ public class TestHiveHistoryBasedStatsTracking
 //                CONNECTOR);
     }
 
+    @Test
+    public void testSimpleCteMaterialization1()
+    {
+        String query = "WITH  temp as (SELECT orderkey FROM orders) " +
+                "SELECT * FROM temp t1 ";
+//        assertPlan(
+//                "SELECT O.totalprice, C.name FROM orders O JOIN (SELECT name, custkey FROM customer UNION ALL SELECT * FROM (VALUES ('unknown', NULL)) t(name, custkey)) C ON C.custkey = O.custkey AND YEAR(O.orderdate) = 1995",
+//                anyTree(node(JoinNode.class, anyTree(any()), anyTree(any())).withOutputRowCount(2204).withJoinStatistics(1501, 1, 2204, 0)));
+
+        // CBO stats
+        // CBO Statistics
+        executeAndTrackHistory(query, createCBOMaterializedSession());
+
+        // CBO stats
+        executeAndTrackHistory(query, createCBOMaterializedSession());
+//        assertSamePlanHash(
+//                query1,
+//                getMaterializedSession(),
+//                query1,
+//                getMaterializedSession(),
+//                CONNECTOR);
+    }
+
+    @Test
+    public void testSimpleCteMaterialization2()
+    {
+        String query = "WITH  temp as (SELECT count(*) FROM orders) " +
+                "SELECT * FROM temp t1 UNION SELECT * FROM temp t1 ";
+//        assertPlan(
+//                "SELECT O.totalprice, C.name FROM orders O JOIN (SELECT name, custkey FROM customer UNION ALL SELECT * FROM (VALUES ('unknown', NULL)) t(name, custkey)) C ON C.custkey = O.custkey AND YEAR(O.orderdate) = 1995",
+//                anyTree(node(JoinNode.class, anyTree(any()), anyTree(any())).withOutputRowCount(2204).withJoinStatistics(1501, 1, 2204, 0)));
+
+        // CBO stats
+        // CBO Statistics
+        executeAndTrackHistory(query, createCBOMaterializedSession());
+
+        // CBO stats
+        executeAndTrackHistory(query, createCBOMaterializedSession());
+//        assertSamePlanHash(
+//                query1,
+//                getMaterializedSession(),
+//                query1,
+//                getMaterializedSession(),
+//                CONNECTOR);
+    }
+
     @Override
     protected void assertPlan(@Language("SQL") String query, PlanMatchPattern pattern)
     {
@@ -212,6 +258,14 @@ public class TestHiveHistoryBasedStatsTracking
     {
         return Session.builder(createSession())
                 .setSystemProperty(CTE_MATERIALIZATION_STRATEGY, "ALL")
+                .setSystemProperty(PARTITIONING_PROVIDER_CATALOG, "hive")
+                .build();
+    }
+
+    public Session createCBOMaterializedSession()
+    {
+        return Session.builder(createSession())
+                .setSystemProperty(CTE_MATERIALIZATION_STRATEGY, "COST_BASED")
                 .setSystemProperty(PARTITIONING_PROVIDER_CATALOG, "hive")
                 .build();
     }

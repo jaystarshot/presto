@@ -53,7 +53,7 @@ import static com.facebook.presto.sql.TemporaryTableUtil.assignPartitioningVaria
 import static com.facebook.presto.sql.TemporaryTableUtil.assignTemporaryTableColumnNames;
 import static com.facebook.presto.sql.TemporaryTableUtil.createTemporaryTableScan;
 import static com.facebook.presto.sql.TemporaryTableUtil.createTemporaryTableWriteWithoutExchanges;
-import static com.facebook.presto.sql.analyzer.FeaturesConfig.CteMaterializationStrategy.ALL;
+import static com.facebook.presto.sql.analyzer.FeaturesConfig.CteMaterializationStrategy.NONE;
 import static com.facebook.presto.sql.planner.optimizations.CteUtils.getCtePartitionIndex;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
@@ -87,7 +87,7 @@ public class PhysicalCteOptimizer
     @Override
     public PlanOptimizerResult optimize(PlanNode plan, Session session, TypeProvider types, VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator, WarningCollector warningCollector)
     {
-        if (!getCteMaterializationStrategy(session).equals(ALL)
+        if (getCteMaterializationStrategy(session).equals(NONE)
                 || session.getCteInformationCollector().getCTEInformationList().stream().noneMatch(CTEInformation::isMaterialized)) {
             return PlanOptimizerResult.optimizerResult(plan, false);
         }

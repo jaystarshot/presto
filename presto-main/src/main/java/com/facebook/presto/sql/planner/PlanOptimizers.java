@@ -276,8 +276,8 @@ public class PlanOptimizers
                 new PruneWindowColumns(),
                 new PruneLimitColumns(),
                 new PruneTableScanColumns());
-
-        builder.add(new LogicalCteOptimizer(metadata));
+        builder.add(new StatsRecordingPlanOptimizer(optimizerStats, new HistoricalStatisticsEquivalentPlanMarkingOptimizer(statsCalculator)));
+        builder.add(new LogicalCteOptimizer(metadata, costComparator, costCalculator, statsCalculator));
 
         IterativeOptimizer inlineProjections = new IterativeOptimizer(
                 metadata,
