@@ -107,6 +107,7 @@ public class LogicalCteOptimizer
             return PlanOptimizerResult.optimizerResult(plan, false);
         }
         CteEnumerator cteEnumerator = new CteEnumerator(idAllocator, variableAllocator);
+        session.orignalPlan = Optional.of(SimplePlanRewriter.rewriteWith(new CteReferenceRemover(session), plan, null));
         PlanNode rewrittenPlan = cteEnumerator.transformPersistentCtes(session, plan);
         return PlanOptimizerResult.optimizerResult(rewrittenPlan, cteEnumerator.isPlanRewritten());
     }
@@ -586,6 +587,29 @@ public class LogicalCteOptimizer
                         indexGraph.putEdge(cteIdToProducerIndexMap.get(cteId), cteIdToProducerIndexMap.get(successor)));
             }
             return indexGraph;
+        }
+    }
+
+    public static class CteReferenceRemover
+            extends SimplePlanRewriter<Void>
+    {
+        private final Session session;
+
+        public CteReferenceRemover(Session session)
+        {
+            this.session = session;
+        }
+
+        @Override
+        public PlanNode visitCteReference(CteReferenceNode node, RewriteContext<Void> context)
+        {
+            // do not materialize
+            // update cte info
+//            HashMap<String, CTEInformation> cteInformationMap = session.getCteInformationCollector().getCteInformationMap();
+//            CTEInformation cteInfo = cteInformationMap.get(node.getCteId());
+//            cteInformationMap.put(node.getCteId(),
+//                    new CTEInformation(cteInfo.getCteName(), cteInfo.getCteId(), cteInfo.getNumberOfReferences(), cteInfo.getIsView(), false));
+            return context.rewrite(node.getSource(), context.get());
         }
     }
 }

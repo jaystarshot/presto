@@ -28,6 +28,8 @@ import static com.facebook.presto.SystemSessionProperties.CTE_FILTER_AND_PROJECT
 import static com.facebook.presto.SystemSessionProperties.CTE_MATERIALIZATION_STRATEGY;
 import static com.facebook.presto.SystemSessionProperties.PUSHDOWN_SUBFIELDS_ENABLED;
 import static com.facebook.presto.SystemSessionProperties.QUERY_MAX_WRITTEN_INTERMEDIATE_BYTES;
+import static com.facebook.presto.SystemSessionProperties.VERBOSE_OPTIMIZER_INFO_ENABLED;
+import static com.facebook.presto.SystemSessionProperties.VERBOSE_OPTIMIZER_RESULTS;
 import static com.facebook.presto.testing.assertions.Assert.assertEquals;
 import static io.airlift.tpch.TpchTable.CUSTOMER;
 import static io.airlift.tpch.TpchTable.LINE_ITEM;
@@ -1198,6 +1200,9 @@ public class TestCteExecution
                 .setSystemProperty(PUSHDOWN_SUBFIELDS_ENABLED, "true")
                 .setSystemProperty(CTE_MATERIALIZATION_STRATEGY, "ALL")
                 .setSystemProperty(CTE_FILTER_AND_PROJECTION_PUSHDOWN_ENABLED, "true")
+                .setSystemProperty(CTE_FILTER_PUSHDOWN_ENABLED, "true")
+                .setSystemProperty(VERBOSE_OPTIMIZER_RESULTS, "ALL")
+                .setSystemProperty(VERBOSE_OPTIMIZER_INFO_ENABLED, "true")
                 .build();
     }
 }
